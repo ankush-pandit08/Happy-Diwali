@@ -1,24 +1,51 @@
 'use client';
-import {useEffect,useState} from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import ScratchCard from './scratch-card';
-import {ArrowRight, Sparkles, Gift, ShieldCheck, ArrowUpRight, Flame, RefreshCw} from 'lucide-react';
-type Entry={id:string;name:string;played:number;win:number};
-type State={count:number;closed:boolean;winners:Entry[];entry:Entry|null};
-async function requestEvent(options:RequestInit={}){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);try{const response=await fetch('/api/event',{...options,signal:controller.signal});const result=await response.json();return {response,result};}catch(e){if(controller.signal.aborted)throw Error('The connection is taking longer than expected. Please try again.');throw e;}finally{clearTimeout(timer)}}
-export default function Home(){
- const [data,setData]=useState<State>({count:0,closed:false,winners:[],entry:null}),[name,setName]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[fresh,setFresh]=useState(false),[loaded,setLoaded]=useState(false);
- async function refresh(){try{let device='';try{device=localStorage.getItem('diwali-device')||''}catch{}const {response:r,result:v}=await requestEvent({headers:{'x-diwali-device':device}});if(!r.ok)throw Error(v.error);setData(v);setLoaded(true);setError('');}catch(e){setError((e as Error).message);}}
- useEffect(()=>{refresh();const timer=setInterval(refresh,20000);return()=>clearInterval(timer)},[]);
- async function enter(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{let device='';try{device=localStorage.getItem('diwali-device')||Array.from(crypto.getRandomValues(new Uint8Array(18)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('diwali-device',device)}catch{}const {response:r,result:v}=await requestEvent({method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,device})});if(!r.ok){if(v.closed)setData(v);throw Error(v.error)}setData(v);setLoaded(true);setFresh(true)}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- const winner=!!data.entry?.win;
- return <div className="site"><header><a className="brand" href="/" aria-label="Light and Luck home"><span className="brand-icon"><Flame size={22}/></span>light<span className="amp">&</span>luck</a><span className="event-tag"><i/> OFFICE DIWALI CELEBRATION</span><span className="edition">THE FESTIVAL OF LIGHTS <span>2026</span></span></header>
- <main><section className="hero"><div className="hero-copy"><div className="eyebrow"><span/> A LITTLE LIGHT. A LITTLE MAGIC.</div><h1>Let your light<br/>shine a little<br/><em>brighter.</em><span className="heading-star">✧</span></h1><p className="intro">Some celebrations are better together.<br/>Leave your name, unwrap a Diwali wish, then scratch your card to see if luck finds you.</p><div className="hero-note"><span className="tiny-diya">✦</span><div>A wish for everyone.<br/><b>Up to three lucky surprises to unwrap.</b></div></div></div>
- <div className="experience"><div className="art" aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="orbit orbit-three"/><span className="art-star a">✧</span><span className="art-star b">✦</span><span className="art-star c">✧</span><span className="art-star d">·</span><span className="art-star e">✦</span><div className="diya-glow"/><svg className="diya" viewBox="0 0 340 250"><defs><linearGradient id="bowl" x2="0" y2="1"><stop stopColor="#e8a46c"/><stop offset="1" stopColor="#a44c30"/></linearGradient><linearGradient id="fire" x2="0" y2="1"><stop stopColor="#fff1b6"/><stop offset=".5" stopColor="#ffd66e"/><stop offset="1" stopColor="#ef9a41"/></linearGradient></defs><ellipse cx="170" cy="222" rx="100" ry="10" fill="#170f20" opacity=".3"/><path d="M50 153 Q170 184 290 153 Q274 223 170 226 Q68 220 50 153Z" fill="url(#bowl)"/><ellipse cx="170" cy="153" rx="120" ry="22" fill="#f4ba7b"/><ellipse cx="170" cy="153" rx="105" ry="14" fill="#6f3430"/><path d="M168 159q8-12 2-28" fill="none" stroke="#392335" strokeWidth="6"/><path className="flame" d="M171 30 C216 88 202 128 173 136 C143 131 128 105 147 76 C157 60 165 47 171 30Z" fill="url(#fire)"/><path d="M173 87q22 35 0 47q-22-8 0-47" fill="#fff5cc"/><path d="M86 180q84 50 168 0M103 199q67 31 134 0" stroke="#f8c181" strokeWidth="2" fill="none" opacity=".5"/><g fill="#f6c183"><circle cx="110" cy="183" r="3"/><circle cx="138" cy="191" r="3"/><circle cx="170" cy="194" r="3"/><circle cx="202" cy="191" r="3"/><circle cx="230" cy="183" r="3"/></g></svg><span className="art-caption">MAY GOOD THINGS GLOW YOUR WAY</span></div>
- <section className={'wish-card '+(data?.entry?'completed':'')} aria-live="polite">
+import type { EventState } from '@/lib/event-types';
 
- {data.entry?<><span className="card-kicker">{winner?'A LITTLE EXTRA LUCK FOR YOU':'YOUR PERSONAL DIWALI WISH'}</span><h2>Happy Diwali,<br/><em>{data.entry.name}!</em></h2><p>May your days be filled with light, your home with happiness, and your year with wonderful new beginnings.</p><div className="entry-status"><Sparkles size={17}/>{winner?'You’re one of our lucky winners!':data.entry.played?'Your scratch card result has been saved.':fresh?'Your wish is lit. Your scratch card is waiting!':'Welcome back! Your scratch card is below.'}</div><small>Entry #{data.entry.id.slice(0,8).toUpperCase()} · One card per browser</small><ScratchCard key={data.entry.id} entry={data.entry} onResult={v=>{setData(v);setLoaded(true)}}/></>:<><span className="card-kicker">YOUR DIWALI MOMENT STARTS HERE</span><h2>First, what’s your name?</h2><p>There’s a little festive magic waiting for you.</p><form onSubmit={enter}><label htmlFor="name">Your name</label><input id="name" placeholder="e.g. Ankush Pandit" required minLength={2} maxLength={60} autoComplete="name" value={name} onChange={e=>setName(e.target.value)}/><button disabled={busy}>{busy?'Lighting your wish…':'Light up my Diwali'}<ArrowRight size={19}/></button></form><div className="privacy"><ShieldCheck size={14}/>One entry per browser. One scratch card.</div><small>By entering, you agree your name may appear if you win.</small></>}
- {error&&<div role="alert"><p className="error">{error}</p><button type="button" onClick={refresh}>Retry connection <RefreshCw size={16}/></button></div>}<noscript><p>Please enable JavaScript in your browser to enter the celebration.</p></noscript></section></div></section>
- <section className="draw-section"><div className="draw-intro"><span className="card-kicker">A LITTLE FESTIVE FORTUNE</span><h2>A little scratch.<br/><em>A little festive fortune.</em></h2><p>Everyone gets a wish and a scratch card.<br className="desktop"/> Up to three visitors get a little something extra.</p></div><div className="draw-panel"><div className="draw-top"><span><Gift size={17}/>THE LUCKY THREE</span><span className="draw-status"><i/>{!loaded?'CHECKING PRIZES':data.winners.length>=3?'ALL PRIZES CLAIMED':'INSTANT REVEAL'}</span></div><div className="prizes">{[0,1,2].map(i=><div className="prize" key={i}><span className="prize-icon">{data?.winners[i]?<Sparkles size={25}/>:<Gift size={25}/>}</span><span className="prize-number">0{i+1}</span><b>{data?.winners[i]?.name||'A lucky someone'}</b><small>{data?.winners[i]?'Prize won!':data.winners.length>=3?'Claimed':'Could it be you?'}</small></div>)}</div><div className="draw-bottom"><span>{loaded?data.count:'—'} wishes lit so far</span><span>{data.winners.length} of 3 prizes won</span></div></div></section>
- <div className="steps"><span><b>01</b> Scan the QR</span><span className="step-line"/><span><b>02</b> Leave your name</span><span className="step-line"/><span><b>03</b> Scratch & reveal your luck <Sparkles size={14}/></span></div></main>
- <footer><span>Made for brighter moments, together.</span><span>शुभ दीपावली <span className="footer-star">✧</span></span><a href="/organizer">Event details <ArrowUpRight size={13}/></a></footer></div>
+export default function Home() {
+  const [name, setName] = useState('');
+  const [data, setData] = useState<EventState>({ entry: null, winnerCount: 0 });
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    fetch('/api/event', { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]), cache: 'no-store' })
+      .then(async response => { const result = response.ok ? await response.json() : null; if (active && result) setData(result); })
+      .catch(() => {}).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; controller.abort(); };
+  }, []);
+  async function enter(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError('');
+    try {
+      const response = await fetch('/api/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }), signal: AbortSignal.timeout(12000) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      setData(result);
+    } catch (error) {
+      setError(error instanceof Error && error.name === 'TimeoutError' ? 'The connection took too long. Please try again.' : error instanceof Error ? error.message : 'Please try again.');
+    } finally { setBusy(false); }
+  }
+  return <main className="celebration">
+    <span className="eyebrow">A LITTLE LIGHT & LUCK</span>
+    <div className="diya" aria-hidden="true"><span className="flame" /><span className="bowl" /></div>
+    {data.entry ? <>
+      <h1>Happy Diwali,<br /><em>{data.entry.name}!</em></h1>
+      <p className="wish">May your home be full of light, your heart full of joy,<br className="wide" /> and your year full of beautiful beginnings.</p>
+      <ScratchCard key={data.entry.id} entry={data.entry} onResult={setData} />
+    </> : <>
+      <h1>A little Diwali<br /><em>surprise for you.</em></h1>
+      <p className="wish">A warm wish. A little luck. Start with your name.</p>
+      <form className="name-form" onSubmit={enter}>
+        <label htmlFor="name">What’s your name?</label>
+        <input id="name" name="name" autoComplete="name" placeholder="Your name" required minLength={2} maxLength={60} value={name} onChange={event => setName(event.target.value)} disabled={busy || loading} />
+        <button disabled={busy || loading}>{loading ? 'Getting ready…' : busy ? 'Lighting your wish…' : 'Make my Diwali ✨'}</button>
+        {error && <p className="error" role="alert">{error}</p>}
+      </form>
+    </>}
+    <p className="footnote">3 lucky winners. A gift card for each.<br />One scratch card per browser. Gifts shared personally by the organizer.</p>
+    <footer>Made with light, shared with love. <span lang="hi">शुभ दीपावली</span></footer>
+  </main>;
 }

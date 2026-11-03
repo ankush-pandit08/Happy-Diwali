@@ -1,14 +1,60 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
-import {Gift,Sparkles} from 'lucide-react';
-type Result={id:string;name:string;played:number;win:number};
-export default function ScratchCard({entry,onResult}:{entry:Result;onResult:(data:any)=>void}){
- const canvas=useRef<HTMLCanvasElement>(null),drawing=useRef(false),last=useRef<{x:number;y:number}|null>(null),distance=useRef(0);
- const [open,setOpen]=useState(!!entry.played),[result,setResult]=useState<Result|null>(entry.played?entry:null),[error,setError]=useState(''),[loading,setLoading]=useState(false);
- const inFlight=useRef(false),currentResult=useRef<Result|null>(entry.played?entry:null);
- useEffect(()=>{const c=canvas.current;if(!c)return;const ctx=c.getContext('2d');if(!ctx)return;const gradient=ctx.createLinearGradient(0,0,600,220);gradient.addColorStop(0,'#e6c68b');gradient.addColorStop(.5,'#f8e8bb');gradient.addColorStop(1,'#c99350');ctx.fillStyle=gradient;ctx.fillRect(0,0,600,220);ctx.fillStyle='#78542f';ctx.textAlign='center';ctx.font='30px Georgia';ctx.fillText('A little luck awaits',300,98);ctx.font='13px Arial';ctx.fillText('SCRATCH HERE TO REVEAL',300,132);},[]);
- async function reveal(){if(currentResult.current){setOpen(true);return}if(inFlight.current)return;inFlight.current=true;setLoading(true);setError('');const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),12000);try{let device='';try{device=localStorage.getItem('diwali-device')||''}catch{}const r=await fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json','x-diwali-device':device},body:JSON.stringify({action:'reveal'}),signal:controller.signal});const v=await r.json();if(!r.ok)throw Error(v.error);currentResult.current=v.entry;setResult(v.entry);setOpen(true);onResult(v);}catch(e){setError(controller.signal.aborted?'Connection took too long. Try revealing again.':(e as Error).message)}finally{clearTimeout(timer);inFlight.current=false;setLoading(false)}}
- function point(e:React.PointerEvent<HTMLCanvasElement>){const bounds=e.currentTarget.getBoundingClientRect();return{x:(e.clientX-bounds.left)*600/bounds.width,y:(e.clientY-bounds.top)*220/bounds.height}}
- function scratch(e:React.PointerEvent<HTMLCanvasElement>){if(!drawing.current)return;const p=point(e),ctx=canvas.current?.getContext('2d');if(!ctx)return;ctx.globalCompositeOperation='destination-out';ctx.lineWidth=48;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(last.current?.x??p.x,last.current?.y??p.y);ctx.lineTo(p.x,p.y);ctx.stroke();distance.current+=last.current?Math.hypot(p.x-last.current.x,p.y-last.current.y):1;last.current=p;if(distance.current>400){drawing.current=false;reveal()}}
- return <section className="scratch-wrap" aria-label="Your Diwali scratch card"><span className="card-kicker">YOUR ONE LITTLE CHANCE AT LUCK</span><h3>Scratch. Smile. Celebrate.</h3><p>Scratch the golden card to discover your surprise.</p><div className="scratch-surface"><div className="scratch-result" aria-live="polite">{open&&result?<><Sparkles size={28}/><strong>{result.win?'You’re a lucky winner!':'A little light is still yours.'}</strong><span>{result.win?'Congratulations! Show this card to the office organizer to claim your surprise.':'No prize this time. Wishing you a bright and beautiful Diwali!'}</span>{!!result.win&&<small>WINNING CARD #{result.id.slice(0,8).toUpperCase()}</small>}</>:<><Gift size={26}/><strong>{loading?'Unwrapping your surprise…':'Your surprise is sealed'}</strong><span>One card. One saved result.</span></>}</div>{!open&&<canvas ref={canvas} width={600} height={220} aria-label="Scratch here, or use the reveal button below" onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);drawing.current=true;last.current=point(e);scratch(e)}} onPointerMove={scratch} onPointerUp={()=>{drawing.current=false;last.current=null}} onPointerCancel={()=>{drawing.current=false;last.current=null}}/>}</div>{!open&&<button type="button" onClick={reveal} disabled={loading}>{loading?'Revealing…':'Tap to reveal instead'} <Sparkles size={16}/></button>}{error&&<p role="alert" className="error">{error}</p>}<small>1% chance while prizes remain · Maximum 3 winners in total.<br/>Your result is saved. Refreshing won’t give another try.</small></section>
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import type { Entry, EventState } from '@/lib/event-types';
+
+export default function ScratchCard({ entry, onResult }: { entry: Entry; onResult: (data: EventState) => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const last = useRef<{ x: number; y: number } | null>(null);
+  const distance = useRef(0), inFlight = useRef(false);
+  const [result, setResult] = useState(entry);
+  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  useEffect(() => {
+    const context = canvas.current?.getContext('2d');
+    if (!context) return;
+    const gradient = context.createLinearGradient(0, 0, 600, 240);
+    gradient.addColorStop(0, '#c99744'); gradient.addColorStop(0.5, '#f4dfaa'); gradient.addColorStop(1, '#d5a655');
+    context.fillStyle = gradient; context.fillRect(0, 0, 600, 240);
+    context.fillStyle = '#65461e'; context.textAlign = 'center';
+    context.font = '32px Georgia'; context.fillText('A little luck awaits', 300, 112);
+    context.font = '14px Arial'; context.fillText('SCRATCH TO REVEAL', 300, 148);
+  }, []);
+  async function reveal() {
+    if (inFlight.current || result.played) return;
+    inFlight.current = true; setBusy(true); setError('');
+    try {
+      const response = await fetch('/api/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reveal' }), signal: AbortSignal.timeout(12000) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      if (!data.entry?.played) throw new Error('Your card is not ready. Please try again.');
+      setResult(data.entry); onResult(data);
+    } catch (error) {
+      setError(error instanceof Error && error.name === 'TimeoutError' ? 'Connection took too long. Please try again.' : error instanceof Error ? error.message : 'Please try again.');
+    } finally { inFlight.current = false; setBusy(false); }
+  }
+  function scratch(event: PointerEvent<HTMLCanvasElement>) {
+    if (!last.current || busy) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const point = { x: (event.clientX - bounds.left) * 600 / bounds.width, y: (event.clientY - bounds.top) * 240 / bounds.height };
+    const context = canvas.current?.getContext('2d');
+    if (!context) return;
+    context.globalCompositeOperation = 'destination-out'; context.lineWidth = 55; context.lineCap = 'round'; context.beginPath();
+    context.moveTo(last.current.x, last.current.y); context.lineTo(point.x, point.y); context.stroke();
+    distance.current += Math.hypot(point.x - last.current.x, point.y - last.current.y); last.current = point;
+    if (distance.current > 450) { last.current = null; void reveal(); }
+  }
+  return <section className="scratch-card" aria-label="Your Diwali scratch card">
+    <div className="scratch-surface"><div className="scratch-result" aria-live="polite">
+      {result.played ? <>
+        <span className="result-icon" aria-hidden="true">{result.win ? '🎁' : '🪔'}</span>
+        <h2>{result.win ? 'You’re a lucky winner!' : 'A bright wish, just for you.'}</h2>
+        <p>{result.win ? 'You won a gift card! Show this card to the organizer to collect your gift.' : 'No gift card this time. Here’s wishing you a wonderful Diwali!'}</p>
+        {!!result.win && <code>Winning card: {result.id}</code>}
+      </> : <><h2>{busy ? 'Opening your surprise…' : 'Your surprise is waiting'}</h2><p>Scratch the golden card or tap below.</p></>}
+    </div>{!result.played && <canvas ref={canvas} width={600} height={240} aria-label="Scratch to reveal your result, or use the button below"
+      onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); const bounds = event.currentTarget.getBoundingClientRect(); last.current = { x: (event.clientX - bounds.left) * 600 / bounds.width, y: (event.clientY - bounds.top) * 240 / bounds.height }; }}
+      onPointerMove={scratch} onPointerUp={() => { last.current = null; }} onPointerCancel={() => { last.current = null; }} />}</div>
+    {!result.played && <button className="reveal-button" onClick={reveal} disabled={busy}>{busy ? 'Revealing…' : 'Tap to reveal instead'}</button>}
+    {error && <p className="error" role="alert">{error}</p>}
+    {!!result.played && <p className="saved">Your result is saved. Happy celebrating!</p>}
+  </section>;
 }

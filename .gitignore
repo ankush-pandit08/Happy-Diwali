@@ -1,5 +1,7 @@
 # Dependencies
 /node_modules/
+/.npm-cache/
+/.npm-install-incomplete/
 /.pnp
 .pnp.*
 # Keep authored Yarn tooling if the project adopts Yarn.
@@ -28,6 +30,7 @@ yarn-error.log*
 
 # Local environment and keys
 .env*
+!.env.example
 .dev.vars*
 *.pem
 
