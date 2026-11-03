@@ -14,4 +14,6 @@ Run `npm ci` and `npm run dev`, then open http://localhost:3000.
 
 Run `npm run lint` and `npm run build`. Next.js exports the static website to `out/`. Upload that folder to any static host, or import the repository into Vercel with the checked-in configuration.
 
+On Vercel, keep the framework preset set to **Next.js** and disable the **Output Directory** override. The Next.js integration reads build metadata from `.next/` and handles the static export automatically. Setting Vercel's output directory to `out` makes it look for `routes-manifest.json` in the wrong folder. The `out/` folder is for uploading directly to a generic static host.
+
 Legacy starter folders remain for reference and are excluded from the Next.js build.
