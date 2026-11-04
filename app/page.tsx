@@ -66,7 +66,7 @@ export default function Home() {
   }
 
   return <main className="celebration">
-    <span className="eyebrow">A LITTLE LIGHT & LAUGHTER</span>
+    <span className="eyebrow">A LITTLE LIGHT & JOY</span>
     <div className="diya" aria-hidden="true"><span className="flame" /><span className="bowl" /></div>
     {entry ? <>
       <h1>Happy Diwali,<br /><em>{entry.name}!</em></h1>
@@ -77,14 +77,14 @@ export default function Home() {
       <ScratchCard entry={entry} onReveal={reveal} />
     </> : <>
       <h1>A little Diwali<br /><em>surprise for you.</em></h1>
-      <p className="wish">A warm wish. A silly joke. Start with your name.</p>
+      <p className="wish">A warm wish. A sparkling surprise. Start with your name.</p>
       <form className="name-form" onSubmit={enter}>
         <label htmlFor="name">What’s your name?</label>
         <input id="name" name="name" autoComplete="name" placeholder="Your name" required minLength={2} maxLength={60} pattern=".*\S.*\S.*" title="Please enter at least two non-space characters." value={name} onChange={event => setName(event.target.value)} disabled={loading} />
         <button disabled={loading}>{loading ? 'Getting ready…' : 'Make my Diwali ✨'}</button>
       </form>
     </>}
-    <p className="footnote">Scratch a little, laugh a little.<br />A Diwali joke and a smile, just for you.</p>
+    <p className="footnote">Scratch a little, celebrate a little.<br />A Diwali sparkle and a smile, just for you.</p>
     <footer>Made with light, shared with love. <span lang="hi">शुभ दीपावली</span></footer>
   </main>;
 }
