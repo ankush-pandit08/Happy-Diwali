@@ -12,8 +12,14 @@ export default function Home() {
   const [voiceAvailable, setVoiceAvailable] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const utterance = useRef<SpeechSynthesisUtterance | null>(null);
+  const voices = useRef<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
+    // Safari may populate its voice list after the first request.
+    const synthesis = 'speechSynthesis' in window ? window.speechSynthesis : null;
+    const refreshVoices = () => { voices.current = synthesis?.getVoices() ?? []; };
+    refreshVoices();
+    synthesis?.addEventListener('voiceschanged', refreshVoices);
     // Restore browser-only state after the static page has hydrated.
     const frame = requestAnimationFrame(() => {
       setEntry(readCard());
@@ -22,6 +28,7 @@ export default function Home() {
     });
     return () => {
       cancelAnimationFrame(frame);
+      synthesis?.removeEventListener('voiceschanged', refreshVoices);
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     };
   }, []);
@@ -30,19 +37,35 @@ export default function Home() {
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
     const synthesis = window.speechSynthesis;
     synthesis.cancel();
-    const wish = new SpeechSynthesisUtterance(`${person}, तुम्हाला आणि तुमच्या कुटुंबाला दिवाळीच्या हार्दिक शुभेच्छा! तुमचे आयुष्य प्रकाशाने, आनंदाने आणि समृद्धीने उजळून निघो. ही दिवाळी तुम्हाला सुख, शांती आणि उत्तम आरोग्य घेऊन येवो!`);
-    wish.lang = 'mr-IN';
-    const voices = synthesis.getVoices();
-    const voice = voices.find(voice => voice.lang.toLowerCase() === 'mr-in')
-      ?? voices.find(voice => voice.lang.toLowerCase().startsWith('mr'));
-    if (voice) wish.voice = voice;
+    const available = synthesis.getVoices();
+    if (available.length) voices.current = available;
+    const language = (voice: SpeechSynthesisVoice) => voice.lang.toLowerCase().replaceAll('_', '-').split('-')[0];
+    const voice = voices.current.find(voice => language(voice) === 'mr')
+      ?? voices.current.find(voice => language(voice) === 'hi')
+      ?? voices.current.find(voice => voice.lang.toLowerCase().replaceAll('_', '-') === 'en-in')
+      ?? voices.current.find(voice => language(voice) === 'en');
+    if (!voice) {
+      setVoiceError('आवाज तयार नाही. थोड्या वेळाने पुन्हा बटण दाबा. Marathi, Hindi or English speech voice required.');
+      return;
+    }
+    // Never send Devanagari to an English voice: some iPhones read only
+    // the Latin name and punctuation. Keep the fallback wish in Marathi,
+    // using phonetic Latin text that the selected voice can pronounce.
+    const phonetic = language(voice) === 'en';
+    const safeName = person.replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ').trim();
+    const text = phonetic
+      ? `${safeName}. Tumhala aani tumchya kutumbala Diwalichya hardik shubhechha. Tumche aayushya prakashane, aanandane aani samruddhine ujalun nigho. Hee Diwali tumhala sukh, shanti aani uttam aarogya gheun yevo.`
+      : `${safeName}. तुम्हाला आणि तुमच्या कुटुंबाला दिवाळीच्या हार्दिक शुभेच्छा. तुमचे आयुष्य प्रकाशाने, आनंदाने आणि समृद्धीने उजळून निघो. ही दिवाळी तुम्हाला सुख, शांती आणि उत्तम आरोग्य घेऊन येवो.`;
+    const wish = new SpeechSynthesisUtterance(text);
+    wish.voice = voice;
+    wish.lang = voice.lang;
     wish.rate = 0.9;
     wish.onerror = event => {
       if (event.error !== 'interrupted' && event.error !== 'canceled') {
         setVoiceError('मराठी आवाज उपलब्ध नसू शकतो. पुन्हा प्रयत्न करण्यासाठी खालील बटण दाबा.');
       }
     };
-    setVoiceError('');
+    setVoiceError(phonetic ? 'या उपकरणावर मराठी आवाज उपलब्ध नाही. शुभेच्छा उपलब्ध आवाजात ऐकवल्या जात आहेत.' : '');
     utterance.current = wish;
     synthesis.resume();
     synthesis.speak(wish);
