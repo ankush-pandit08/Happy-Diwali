@@ -7,6 +7,7 @@ import { jokes, readCard, saveCard } from '@/lib/event-card';
 export default function Home() {
   const [name, setName] = useState('');
   const [entry, setEntry] = useState<Entry | null>(null);
+  const [round, setRound] = useState(0);
   const [loading, setLoading] = useState(true);
   const [voiceAvailable, setVoiceAvailable] = useState(false);
   const [voiceError, setVoiceError] = useState('');
@@ -65,6 +66,15 @@ export default function Home() {
     setEntry(card);
   }
 
+  function playAgain() {
+    if (!entry) return;
+    const card = { ...entry, played: false };
+    saveCard(card);
+    setEntry(card);
+    // Remount to repaint the coating and reset scratch progress and effects.
+    setRound(value => value + 1);
+  }
+
   return <main className="celebration">
     <span className="eyebrow">A LITTLE LIGHT & JOY</span>
     <div className="diya" aria-hidden="true"><span className="flame" /><span className="bowl" /></div>
@@ -74,7 +84,7 @@ export default function Home() {
       {voiceAvailable ? <button className="voice-button" onClick={() => speakWish(entry.name)}>🔊 Hear my Diwali wish</button>
         : <p className="voice-note">Your browser does not support voice wishes. Sending you a written wish full of light and love!</p>}
       {voiceError && <p className="voice-note" role="status">{voiceError}</p>}
-      <ScratchCard entry={entry} onReveal={reveal} />
+      <ScratchCard key={round} entry={entry} onReveal={reveal} onPlayAgain={playAgain} />
     </> : <>
       <h1>A little Diwali<br /><em>surprise for you.</em></h1>
       <p className="wish">A warm wish. A sparkling surprise. Start with your name.</p>

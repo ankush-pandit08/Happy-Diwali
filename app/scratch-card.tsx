@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { Entry } from '@/lib/event-types';
 
-export default function ScratchCard({ entry, onReveal }: { entry: Entry; onReveal: () => void }) {
+export default function ScratchCard({ entry, onReveal, onPlayAgain }: { entry: Entry; onReveal: () => void; onPlayAgain: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const last = useRef<{x:number;y:number} | null>(null);
   const distance = useRef(0);
@@ -60,6 +60,7 @@ export default function ScratchCard({ entry, onReveal }: { entry: Entry; onRevea
       {!entry.played && <canvas ref={canvas} width={600} height={320} aria-label="Scratch to celebrate Diwali, or use the button below" onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);last.current=point(event);}} onPointerMove={scratch} onPointerUp={()=>{last.current=null;}} onPointerCancel={()=>{last.current=null;}} />}
     </div>
     {!entry.played && <button className="reveal-button" onClick={reveal}>Tap to celebrate</button>}
+    {entry.played && <button className="reveal-button" onClick={onPlayAgain}>Play again</button>}
     <p className="sr-only" role="status">{entry.played?`Happy Diwali, ${entry.name}!`:''}</p>
     <p className="saved">{entry.played?'Let the celebrations sparkle. Happy Diwali!':'Scratch the golden card for a sparkling Diwali surprise.'}</p>
   </section>;
