@@ -11,6 +11,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [voiceAvailable, setVoiceAvailable] = useState(false);
   const [voiceError, setVoiceError] = useState('');
+  const [englishWish, setEnglishWish] = useState(false);
   const utterance = useRef<SpeechSynthesisUtterance | null>(null);
   const voices = useRef<SpeechSynthesisVoice[]>([]);
 
@@ -23,6 +24,7 @@ export default function Home() {
     // Restore browser-only state after the static page has hydrated.
     const frame = requestAnimationFrame(() => {
       setEntry(readCard());
+      setEnglishWish(/iPhone/i.test(navigator.userAgent));
       setVoiceAvailable('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window);
       setLoading(false);
     });
@@ -40,20 +42,25 @@ export default function Home() {
     const available = synthesis.getVoices();
     if (available.length) voices.current = available;
     const language = (voice: SpeechSynthesisVoice) => voice.lang.toLowerCase().replaceAll('_', '-').split('-')[0];
-    const voice = voices.current.find(voice => language(voice) === 'mr')
+    const isIPhone = /iPhone/i.test(navigator.userAgent);
+    const englishVoice = voices.current.find(voice => voice.lang.toLowerCase().replaceAll('_', '-') === 'en-in')
+      ?? voices.current.find(voice => language(voice) === 'en');
+    const voice = isIPhone ? englishVoice : voices.current.find(voice => language(voice) === 'mr')
       ?? voices.current.find(voice => language(voice) === 'hi')
       ?? voices.current.find(voice => voice.lang.toLowerCase().replaceAll('_', '-') === 'en-in')
       ?? voices.current.find(voice => language(voice) === 'en');
     if (!voice) {
-      setVoiceError('आवाज तयार नाही. थोड्या वेळाने पुन्हा बटण दाबा. Marathi, Hindi or English speech voice required.');
+      setVoiceError(isIPhone ? 'The English voice is not ready. Please tap again in a moment.' : 'आवाज तयार नाही. थोड्या वेळाने पुन्हा बटण दाबा.');
       return;
     }
     // Never send Devanagari to an English voice: some iPhones read only
     // the Latin name and punctuation. Keep the fallback wish in Marathi,
     // using phonetic Latin text that the selected voice can pronounce.
-    const phonetic = language(voice) === 'en';
+    const phonetic = !isIPhone && language(voice) === 'en';
     const safeName = person.replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ').trim();
-    const text = phonetic
+    const text = isIPhone
+      ? `Happy Diwali, ${safeName}. Wishing you and your family a Diwali filled with light, joy, and prosperity. May this festival bring you happiness, peace, and good health.`
+      : phonetic
       ? `${safeName}. Tumhala aani tumchya kutumbala Diwalichya hardik shubhechha. Tumche aayushya prakashane, aanandane aani samruddhine ujalun nigho. Hee Diwali tumhala sukh, shanti aani uttam aarogya gheun yevo.`
       : `${safeName}. तुम्हाला आणि तुमच्या कुटुंबाला दिवाळीच्या हार्दिक शुभेच्छा. तुमचे आयुष्य प्रकाशाने, आनंदाने आणि समृद्धीने उजळून निघो. ही दिवाळी तुम्हाला सुख, शांती आणि उत्तम आरोग्य घेऊन येवो.`;
     const wish = new SpeechSynthesisUtterance(text);
@@ -62,7 +69,7 @@ export default function Home() {
     wish.rate = 0.9;
     wish.onerror = event => {
       if (event.error !== 'interrupted' && event.error !== 'canceled') {
-        setVoiceError('मराठी आवाज उपलब्ध नसू शकतो. पुन्हा प्रयत्न करण्यासाठी खालील बटण दाबा.');
+        setVoiceError(isIPhone ? 'The voice could not play. Please tap to try again.' : 'मराठी आवाज उपलब्ध नसू शकतो. पुन्हा प्रयत्न करण्यासाठी खालील बटण दाबा.');
       }
     };
     setVoiceError(phonetic ? 'या उपकरणावर मराठी आवाज उपलब्ध नाही. शुभेच्छा उपलब्ध आवाजात ऐकवल्या जात आहेत.' : '');
@@ -104,9 +111,9 @@ export default function Home() {
     {entry ? <>
       <h1 lang="mr">दिवाळीच्या हार्दिक शुभेच्छा,<br /><em>{entry.name}!</em></h1>
       <p className="wish" lang="mr">तुमचे घर प्रकाशाने आणि मन आनंदाने उजळून निघो.<br className="wide" /> ही दिवाळी तुम्हाला सुख, शांती आणि समृद्धी घेऊन येवो!</p>
-      {voiceAvailable ? <button className="voice-button" lang="mr" onClick={() => speakWish(entry.name)}>🔊 मराठीत शुभेच्छा ऐका</button>
+      {voiceAvailable ? <button className="voice-button" lang={englishWish ? 'en' : 'mr'} onClick={() => speakWish(entry.name)}>{englishWish ? '🔊 Hear my Diwali wish' : '🔊 मराठीत शुभेच्छा ऐका'}</button>
         : <p className="voice-note" lang="mr">तुमच्या ब्राउझरमध्ये आवाजात शुभेच्छा ऐकण्याची सुविधा उपलब्ध नाही. तुम्हाला दिवाळीच्या हार्दिक शुभेच्छा!</p>}
-      {voiceError && <p className="voice-note" lang="mr" role="status">{voiceError}</p>}
+      {voiceError && <p className="voice-note" lang={englishWish ? 'en' : 'mr'} role="status">{voiceError}</p>}
       <ScratchCard key={round} entry={entry} onReveal={reveal} onPlayAgain={playAgain} />
     </> : <>
       <h1>A little Diwali<br /><em>surprise for you.</em></h1>
