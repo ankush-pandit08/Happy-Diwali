@@ -56,12 +56,12 @@ export default function ScratchCard({ entry, onReveal, onPlayAgain }: { entry: E
   return <section className="scratch-card" aria-label="Your Diwali celebration scratch card">
     {celebrating && <div className="diwali-particles" aria-hidden="true">{Array.from({length:48},(_,i)=><span key={i} style={{left:`${i*37%100}%`,top:`${i*23%85}%`,animationDelay:`${i%8*.09}s`,color:['#f5ad23','#e95d35','#d04087','#8c68c9'][i%4]}}>{i%3===0?'✦':'•'}</span>)}</div>}
     <div className="scratch-surface">
-      <div className="scratch-result" aria-hidden={!entry.played}><span className="result-icon" aria-hidden="true">🪔</span><h2>Happy Diwali, {entry.name}!</h2><p>May your Diwali sparkle with light, joy, and happiness.</p></div>
+      <div className="scratch-result" aria-hidden={!entry.played}><span className="result-icon" aria-hidden="true">🪔</span><h2 lang="mr">{entry.name}, दिवाळीच्या हार्दिक शुभेच्छा!</h2><p lang="mr">तुमची दिवाळी प्रकाशाने, आनंदाने आणि समृद्धीने उजळून निघो!</p></div>
       {!entry.played && <canvas ref={canvas} width={600} height={320} aria-label="Scratch to celebrate Diwali, or use the button below" onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);last.current=point(event);}} onPointerMove={scratch} onPointerUp={()=>{last.current=null;}} onPointerCancel={()=>{last.current=null;}} />}
     </div>
     {!entry.played && <button className="reveal-button" onClick={reveal}>Tap to celebrate</button>}
     {entry.played && <button className="reveal-button" onClick={onPlayAgain}>Play again</button>}
-    <p className="sr-only" role="status">{entry.played?`Happy Diwali, ${entry.name}!`:''}</p>
-    <p className="saved">{entry.played?'Let the celebrations sparkle. Happy Diwali!':'Scratch the golden card for a sparkling Diwali surprise.'}</p>
+    <p className="sr-only" lang="mr" role="status">{entry.played?`${entry.name}, दिवाळीच्या हार्दिक शुभेच्छा!`:''}</p>
+    <p className="saved" lang="mr">{entry.played?'आनंदाचा उत्सव साजरा करा. शुभ दीपावली!':'दिवाळीच्या खास शुभेच्छांसाठी सोनेरी कार्ड खरवडा.'}</p>
   </section>;
 }

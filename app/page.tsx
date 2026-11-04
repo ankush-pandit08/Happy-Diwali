@@ -30,16 +30,16 @@ export default function Home() {
     if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
     const synthesis = window.speechSynthesis;
     synthesis.cancel();
-    const wish = new SpeechSynthesisUtterance(`Happy Diwali, ${person}! Wishing you and your family lots of light, laughter, and happiness. Have a wonderful Diwali!`);
-    wish.lang = 'en-IN';
+    const wish = new SpeechSynthesisUtterance(`${person}, तुम्हाला आणि तुमच्या कुटुंबाला दिवाळीच्या हार्दिक शुभेच्छा! तुमचे आयुष्य प्रकाशाने, आनंदाने आणि समृद्धीने उजळून निघो. ही दिवाळी तुम्हाला सुख, शांती आणि उत्तम आरोग्य घेऊन येवो!`);
+    wish.lang = 'mr-IN';
     const voices = synthesis.getVoices();
-    const voice = voices.find(voice => voice.lang.toLowerCase() === 'en-in')
-      ?? voices.find(voice => voice.lang.toLowerCase().startsWith('en'));
+    const voice = voices.find(voice => voice.lang.toLowerCase() === 'mr-in')
+      ?? voices.find(voice => voice.lang.toLowerCase().startsWith('mr'));
     if (voice) wish.voice = voice;
     wish.rate = 0.9;
     wish.onerror = event => {
       if (event.error !== 'interrupted' && event.error !== 'canceled') {
-        setVoiceError('The voice could not play. Tap below to try again.');
+        setVoiceError('मराठी आवाज उपलब्ध नसू शकतो. पुन्हा प्रयत्न करण्यासाठी खालील बटण दाबा.');
       }
     };
     setVoiceError('');
@@ -79,11 +79,11 @@ export default function Home() {
     <span className="eyebrow">A LITTLE LIGHT & JOY</span>
     <div className="diya" aria-hidden="true"><span className="flame" /><span className="bowl" /></div>
     {entry ? <>
-      <h1>Happy Diwali,<br /><em>{entry.name}!</em></h1>
-      <p className="wish">May your home be full of light, your heart full of joy,<br className="wide" /> and your Diwali full of laughter.</p>
-      {voiceAvailable ? <button className="voice-button" onClick={() => speakWish(entry.name)}>🔊 Hear my Diwali wish</button>
-        : <p className="voice-note">Your browser does not support voice wishes. Sending you a written wish full of light and love!</p>}
-      {voiceError && <p className="voice-note" role="status">{voiceError}</p>}
+      <h1 lang="mr">दिवाळीच्या हार्दिक शुभेच्छा,<br /><em>{entry.name}!</em></h1>
+      <p className="wish" lang="mr">तुमचे घर प्रकाशाने आणि मन आनंदाने उजळून निघो.<br className="wide" /> ही दिवाळी तुम्हाला सुख, शांती आणि समृद्धी घेऊन येवो!</p>
+      {voiceAvailable ? <button className="voice-button" lang="mr" onClick={() => speakWish(entry.name)}>🔊 मराठीत शुभेच्छा ऐका</button>
+        : <p className="voice-note" lang="mr">तुमच्या ब्राउझरमध्ये आवाजात शुभेच्छा ऐकण्याची सुविधा उपलब्ध नाही. तुम्हाला दिवाळीच्या हार्दिक शुभेच्छा!</p>}
+      {voiceError && <p className="voice-note" lang="mr" role="status">{voiceError}</p>}
       <ScratchCard key={round} entry={entry} onReveal={reveal} onPlayAgain={playAgain} />
     </> : <>
       <h1>A little Diwali<br /><em>surprise for you.</em></h1>
@@ -95,6 +95,6 @@ export default function Home() {
       </form>
     </>}
     <p className="footnote">Scratch a little, celebrate a little.<br />A Diwali sparkle and a smile, just for you.</p>
-    <footer>Made with light, shared with love. <span lang="hi">शुभ दीपावली</span></footer>
+    <footer>Made with light, shared with love. <span lang="mr">शुभ दीपावली</span></footer>
   </main>;
 }
